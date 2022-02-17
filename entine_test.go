@@ -23,19 +23,19 @@ func TestNewLocationEngin(t *testing.T) {
 	fmt.Printf("parse use %d ms\n", useTime)
 	prov, err := l.GetProv()
 	if err == nil {
-		fmt.Println(prov.getName())
+		fmt.Println(prov.GetName())
 	} else {
 		fmt.Println(err.Error())
 	}
 	city, err := l.GetCity()
 	if err == nil {
-		fmt.Println(city.getName())
+		fmt.Println(city.GetName())
 	} else {
 		fmt.Println(err.Error())
 	}
 	district, err := l.GetDistrict()
 	if err == nil {
-		fmt.Println(district.getName())
+		fmt.Println(district.GetName())
 	} else {
 		fmt.Println(err.Error())
 	}

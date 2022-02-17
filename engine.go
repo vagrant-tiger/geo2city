@@ -16,16 +16,16 @@ const (
 	STREET   = iota
 )
 
-var locationEngin *LocationEngin
+var le *locationEngin
 
 func init() {
-	locationEngin = NewLocationEngin()
+	le = newLocationEngin()
 }
 
 func LocationParseEngin() (*LocationParserEngine, error) {
 	path := "resource/china-province.json"
-	if le, ok := locationEngin.Load(path); ok {
-		return le, nil
+	if lpe, ok := le.Load(path); ok {
+		return lpe, nil
 	}
 
 	var err error
@@ -40,10 +40,10 @@ func LocationParseEngin() (*LocationParserEngine, error) {
 		return nil, errors.New("unmarshal resourceData failed:" + err.Error())
 	}
 
-	le := &LocationParserEngine{
-		ProvinceMap: make(map[uint]*RegionInfo),
-		CityMap:     make(map[uint]map[uint]*RegionInfo),
-		RegionMap:   make(map[uint]map[uint]*RegionInfo),
+	lpe := &LocationParserEngine{
+		provinceMap: make(map[uint]*regionInfo),
+		cityMap:     make(map[uint]map[uint]*regionInfo),
+		regionMap:   make(map[uint]map[uint]*regionInfo),
 	}
 	for _, r := range rd {
 		if r.Level == PROVINCE {
@@ -51,12 +51,12 @@ func LocationParseEngin() (*LocationParserEngine, error) {
 			if err != nil {
 				return nil, err
 			}
-			le.ProvinceMap[r.Code] = l
+			lpe.provinceMap[r.Code] = l
 		} else if r.Level == CITY {
-			ct, ok := le.CityMap[r.ParentCode]
+			ct, ok := lpe.cityMap[r.ParentCode]
 			if !ok {
-				ct = make(map[uint]*RegionInfo)
-				le.CityMap[r.ParentCode] = ct
+				ct = make(map[uint]*regionInfo)
+				lpe.cityMap[r.ParentCode] = ct
 			}
 			l, err := r.convert()
 			if err != nil {
@@ -64,10 +64,10 @@ func LocationParseEngin() (*LocationParserEngine, error) {
 			}
 			ct[r.Code] = l
 		} else if r.Level == DISTRICT || r.Level == STREET {
-			rg, ok := le.RegionMap[r.ParentCode]
+			rg, ok := lpe.regionMap[r.ParentCode]
 			if !ok {
-				rg = make(map[uint]*RegionInfo)
-				le.RegionMap[r.ParentCode] = rg
+				rg = make(map[uint]*regionInfo)
+				lpe.regionMap[r.ParentCode] = rg
 			}
 			l, err := r.convert()
 			if err != nil {
@@ -77,9 +77,9 @@ func LocationParseEngin() (*LocationParserEngine, error) {
 		}
 	}
 
-	locationEngin.Store(path, le)
+	le.Store(path, lpe)
 
-	return le, nil
+	return lpe, nil
 }
 
 type resourceData struct {
@@ -91,13 +91,13 @@ type resourceData struct {
 	Polyline   string `json:"polyline"`
 }
 
-func (rd resourceData) convert() (l *RegionInfo, err error) {
+func (rd resourceData) convert() (l *regionInfo, err error) {
 	centerPoint, err := toPoint(rd.Center)
 	if err != nil {
 		return l, err
 	}
 	s := strings.Split(rd.Polyline, "|")
-	polyline := make([]Polygon, 0)
+	polyline := make([]polygon, 0)
 	for _, ps := range s {
 		pg := make([]*geo.Point, 0)
 		pgs := strings.Split(ps, ";")
@@ -111,13 +111,13 @@ func (rd resourceData) convert() (l *RegionInfo, err error) {
 		polyline = append(polyline, pg)
 	}
 
-	l = &RegionInfo{
-		Name:       rd.Name,
-		Level:      rd.Level,
-		Code:       rd.Code,
-		ParentCode: rd.ParentCode,
-		Center:     centerPoint,
-		Polyline:   polyline,
+	l = &regionInfo{
+		name:       rd.Name,
+		level:      rd.Level,
+		code:       rd.Code,
+		parentCode: rd.ParentCode,
+		center:     centerPoint,
+		polyline:   polyline,
 	}
 	return l, nil
 }
@@ -138,90 +138,90 @@ func toPoint(data string) (p *geo.Point, err error) {
 }
 
 type LocationParserEngine struct {
-	ProvinceMap map[uint]*RegionInfo
-	CityMap     map[uint]map[uint]*RegionInfo
-	RegionMap   map[uint]map[uint]*RegionInfo
+	provinceMap map[uint]*regionInfo
+	cityMap     map[uint]map[uint]*regionInfo
+	regionMap   map[uint]map[uint]*regionInfo
 }
 
-func (lpe *LocationParserEngine) Parse(lat float64, lng float64) (location Location) {
-	location = Location{}
+func (lpe *LocationParserEngine) Parse(lat float64, lng float64) (lc location) {
+	lc = location{}
 	searchPoint := geo.NewPoint(lat, lng)
 
 	// search in province
-	for _, pr := range lpe.ProvinceMap {
+	for _, pr := range lpe.provinceMap {
 		if pr.contain(searchPoint) {
-			location.prov = pr
+			lc.prov = pr
 			break
 		}
 	}
 
-	if location.prov == nil || len(lpe.CityMap) == 0 {
-		return location
+	if lc.prov == nil || len(lpe.cityMap) == 0 {
+		return lc
 	}
 
 	// search in city
-	cities := lpe.CityMap[location.prov.Code]
+	cities := lpe.cityMap[lc.prov.code]
 	for _, cr := range cities {
 		if cr.contain(searchPoint) {
-			location.city = cr
+			lc.city = cr
 			break
 		}
 	}
 
-	if location.city == nil || len(lpe.RegionMap) == 0 {
-		return location
+	if lc.city == nil || len(lpe.regionMap) == 0 {
+		return lc
 	}
 
 	// search in district
-	districts := lpe.RegionMap[location.city.Code]
+	districts := lpe.regionMap[lc.city.code]
 	for _, dr := range districts {
 		if dr.contain(searchPoint) {
-			location.district = dr
+			lc.district = dr
 			break
 		}
 	}
 
-	return location
+	return lc
 }
 
-func (l Location) GetProv() (*RegionInfo, error) {
+func (l location) GetProv() (*regionInfo, error) {
 	if l.prov == nil {
 		return l.prov, errors.New("province not found")
 	}
 	return l.prov, nil
 }
 
-func (l Location) GetCity() (*RegionInfo, error) {
+func (l location) GetCity() (*regionInfo, error) {
 	if l.city == nil {
 		return l.city, errors.New("city not found")
 	}
 	return l.city, nil
 }
 
-func (l Location) GetDistrict() (*RegionInfo, error) {
+func (l location) GetDistrict() (*regionInfo, error) {
 	if l.district == nil {
 		return l.district, errors.New("district not found")
 	}
 	return l.district, nil
 }
 
-type Location struct {
-	prov     *RegionInfo
-	city     *RegionInfo
-	district *RegionInfo
+type location struct {
+	prov     *regionInfo
+	city     *regionInfo
+	district *regionInfo
 }
 
-type RegionInfo struct {
-	Name       string     `json:"name"`
-	Level      uint       `json:"level"`
-	Code       uint       `json:"code"`
-	ParentCode uint       `json:"parentCode"`
-	Center     *geo.Point `json:"center"`
-	Polyline   []Polygon  `json:"polyline"`
+type regionInfo struct {
+	name       string     `json:"name"`
+	level      uint       `json:"level"`
+	code       uint       `json:"code"`
+	parentCode uint       `json:"parentCode"`
+	center     *geo.Point `json:"center"`
+	polyline   []polygon  `json:"polyline"`
 }
 
-func (ri *RegionInfo) contain(point *geo.Point) bool {
-	for _, pl := range ri.Polyline {
+func (ri *regionInfo) contain(point *geo.Point) bool {
+	for _, pl := range ri.polyline {
 		if pl.contain(point) {
 			return true
 		}
@@ -229,13 +229,13 @@ func (ri *RegionInfo) contain(point *geo.Point) bool {
 	return false
 }
 
-func (ri *RegionInfo) getName() string {
-	return ri.Name
+func (ri *regionInfo) GetName() string {
+	return ri.name
 }
 
-type Polygon []*geo.Point
+type polygon []*geo.Point
 
-func (p Polygon) contain(point *geo.Point) bool {
+func (p polygon) contain(point *geo.Point) bool {
 	polygonGeo := geo.NewPolygon(p)
 	return polygonGeo.Contains(point)
 }
