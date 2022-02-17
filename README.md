@@ -14,6 +14,7 @@ $ go get -t github.com/vagrant-tiger/geo2city
 
 ```go
 package main
+
 import (
 	"fmt"
 	"github.com/vagrant-tiger/geo2city"
