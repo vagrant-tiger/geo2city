@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"github.com/vagrant-tiger/geo2city"
 )
+
+
 func main() {
 	// 初始化数据并执行位置解析引擎，只有省的数据的话，大约300ms，如果全量数据在3s左右
 	e, err := geo2city.LocationParseEngin()
