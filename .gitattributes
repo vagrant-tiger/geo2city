@@ -1,3 +1,0 @@
-resource/china-city.json filter=lfs diff=lfs merge=lfs -text
-resource.go filter=lfs diff=lfs merge=lfs -text
-resource/china-region.json filter=lfs diff=lfs merge=lfs -text

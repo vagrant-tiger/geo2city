@@ -8,7 +8,7 @@ import (
 
 func TestNewLocationEngin(t *testing.T) {
 	startTime := time.Now()
-	e, err := LocationParseEngin()
+	e, err := LocationParseEngin("D:/git/geo2city/china-region.json")
 	endTime := time.Now()
 	useTime := endTime.Sub(startTime).Milliseconds()
 	fmt.Printf("start use %d ms\n", useTime)

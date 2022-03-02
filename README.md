@@ -1,6 +1,6 @@
 # Overview
 
-The city information is from [addrparser](https://github.com/hsp8712/addrparser), it includes china's all province/city/region's code, center points, polyline points. It's based on GCJ-02. have use [go-bindata](https://github.com/jteeuwen/go-bindata) to convert binary file. The Point-In-Polygon Algorithm is from [golang-geo](https://github.com/kellydunn/golang-geo)
+The city information is from [addrparser](https://github.com/hsp8712/addrparser), it includes china's all province/city/region's code, center points, polyline points. It's based on GCJ-02. The Point-In-Polygon Algorithm is from [golang-geo](https://github.com/kellydunn/golang-geo)
 
 
 ## Install
@@ -8,6 +8,9 @@ The city information is from [addrparser](https://github.com/hsp8712/addrparser)
 ```
 $ go get -t github.com/vagrant-tiger/geo2city
 ```
+
+## 下载数据文件
+[china-region-20190902.zip](https://github.com/hsp8712/addrparser/releases/download/addrparser-1.0.1/china-region-20190902.zip) 解压后得到文件：china-region.json，文件中包括了所有的省市区行政区域信息，包括编码、名称、中心点、边界点集合。
 
 
 ## Usage Examples
@@ -23,7 +26,7 @@ import (
 
 func main() {
 	// 初始化数据并执行位置解析引擎，只有省的数据的话，大约300ms，如果全量数据在3s左右
-	e, err := geo2city.LocationParseEngin()
+	e, err := geo2city.LocationParseEngin("path/china-region.json")
 	if err != nil {
 		fmt.Println(err.Error())
 		return

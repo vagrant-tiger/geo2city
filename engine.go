@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/kellydunn/golang-geo"
+	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -22,14 +24,22 @@ func init() {
 	le = newLocationEngin()
 }
 
-func LocationParseEngin() (*LocationParserEngine, error) {
-	path := "resource/china-region.json"
+func LocationParseEngin(path string) (*LocationParserEngine, error) {
+	if path == "" {
+		return nil, errors.New("path not empty")
+	}
+
 	if lpe, ok := le.Load(path); ok {
 		return lpe, nil
 	}
 
 	var err error
-	rdByte, err := Asset(path)
+	jsonFile, err := os.Open(path)
+	if err != nil {
+		return nil, errors.New("open file " + path + " err:" + err.Error())
+	}
+	defer jsonFile.Close()
+	rdByte, err := ioutil.ReadAll(jsonFile)
 	if err != nil {
 		return nil, errors.New("can't find file: " + path + " " + err.Error())
 	}
