@@ -50,7 +50,7 @@ func TestFlush2DB(t *testing.T) {
 
 func TestLocationDbEngin(t *testing.T) {
 	startTime := time.Now()
-	e, err := LocationDbEngin("127.0.0.1", "3306", "root", "123456", "china_geo")
+	e, err := LocationDbEngin("127.0.0.1", "3306", "user", "pass", "china_geo")
 	endTime := time.Now()
 	useTime := endTime.Sub(startTime).Milliseconds()
 	fmt.Printf("start use %d ms\n", useTime)
