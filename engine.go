@@ -6,6 +6,7 @@ import (
 	"github.com/kellydunn/golang-geo"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const (
@@ -16,7 +17,10 @@ const (
 	STREET   = iota
 )
 
-var le *locationEngin
+var (
+	wg sync.WaitGroup
+	le *locationEngin
+)
 
 func init() {
 	le = newLocationEngin()
@@ -34,7 +38,7 @@ func LocationParseEngin() (*LocationParserEngine, error) {
 		return nil, errors.New("can't find file: " + path + " " + err.Error())
 	}
 
-	rd := make([]resourceData, 0)
+	rd := make([]*resourceData, 0)
 	err = json.Unmarshal(rdByte, &rd)
 	if err != nil {
 		return nil, errors.New("unmarshal resourceData failed:" + err.Error())
@@ -45,41 +49,47 @@ func LocationParseEngin() (*LocationParserEngine, error) {
 		cityMap:     make(map[uint]map[uint]*regionInfo),
 		regionMap:   make(map[uint]map[uint]*regionInfo),
 	}
+
+	regionChan := make(chan *regionInfo, 100)
+	go storeRegion(regionChan, lpe)
+
 	for _, r := range rd {
-		if r.Level == PROVINCE {
-			l, err := r.convert()
-			if err != nil {
-				return nil, err
-			}
-			lpe.provinceMap[r.Code] = l
-		} else if r.Level == CITY {
-			ct, ok := lpe.cityMap[r.ParentCode]
-			if !ok {
-				ct = make(map[uint]*regionInfo)
-				lpe.cityMap[r.ParentCode] = ct
-			}
-			l, err := r.convert()
-			if err != nil {
-				return nil, err
-			}
-			ct[r.Code] = l
-		} else if r.Level == DISTRICT || r.Level == STREET {
-			rg, ok := lpe.regionMap[r.ParentCode]
-			if !ok {
-				rg = make(map[uint]*regionInfo)
-				lpe.regionMap[r.ParentCode] = rg
-			}
-			l, err := r.convert()
-			if err != nil {
-				return nil, err
-			}
-			rg[r.Code] = l
-		}
+		wg.Add(1)
+		go sendRegion(regionChan, r)
 	}
+	wg.Wait()
 
 	le.Store(path, lpe)
 
 	return lpe, nil
+}
+
+func sendRegion(c chan *regionInfo, r *resourceData) {
+	l, _ := r.convert()
+	c <- l
+}
+
+func storeRegion(c chan *regionInfo, lpe *LocationParserEngine) {
+	for ri := range c {
+		if ri.level == PROVINCE {
+			lpe.provinceMap[ri.code] = ri
+		} else if ri.level == CITY {
+			ct, ok := lpe.cityMap[ri.parentCode]
+			if !ok {
+				ct = make(map[uint]*regionInfo)
+				lpe.cityMap[ri.parentCode] = ct
+			}
+			ct[ri.code] = ri
+		} else if ri.level == DISTRICT || ri.level == STREET {
+			rg, ok := lpe.regionMap[ri.parentCode]
+			if !ok {
+				rg = make(map[uint]*regionInfo)
+				lpe.regionMap[ri.parentCode] = rg
+			}
+			rg[ri.code] = ri
+		}
+		wg.Done()
+	}
 }
 
 type resourceData struct {
