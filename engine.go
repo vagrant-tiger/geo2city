@@ -3,7 +3,7 @@ package geo2city
 import (
 	"encoding/json"
 	"errors"
-	"github.com/kellydunn/golang-geo"
+	"github.com/vagrant-tiger/geo2city/geo"
 	"strconv"
 	"strings"
 	"sync"
