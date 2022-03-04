@@ -27,7 +27,7 @@ func init() {
 }
 
 func LocationParseEngin() (*LocationParserEngine, error) {
-	path := "resource/china-region.json"
+	path := "resource/china-city.json"
 	if lpe, ok := le.Load(path); ok {
 		return lpe, nil
 	}
