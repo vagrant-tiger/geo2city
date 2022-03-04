@@ -44,7 +44,7 @@ func LocationParseEngin(path string) (*LocationParserEngine, error) {
 		return nil, errors.New("can't find file: " + path + " " + err.Error())
 	}
 
-	rd := make([]resourceData, 0)
+	rd := make([]*resourceData, 0)
 	err = json.Unmarshal(rdByte, &rd)
 	if err != nil {
 		return nil, errors.New("unmarshal resourceData failed:" + err.Error())
@@ -55,41 +55,22 @@ func LocationParseEngin(path string) (*LocationParserEngine, error) {
 		cityMap:     make(map[uint]map[uint]*regionInfo),
 		regionMap:   make(map[uint]map[uint]*regionInfo),
 	}
+	regionChan := make(chan *regionInfo, 100)
+	go storeRegion(regionChan, lpe)
 	for _, r := range rd {
-		if r.Level == PROVINCE {
-			l, err := r.convert()
-			if err != nil {
-				return nil, err
-			}
-			lpe.provinceMap[r.Code] = l
-		} else if r.Level == CITY {
-			ct, ok := lpe.cityMap[r.ParentCode]
-			if !ok {
-				ct = make(map[uint]*regionInfo)
-				lpe.cityMap[r.ParentCode] = ct
-			}
-			l, err := r.convert()
-			if err != nil {
-				return nil, err
-			}
-			ct[r.Code] = l
-		} else if r.Level == DISTRICT || r.Level == STREET {
-			rg, ok := lpe.regionMap[r.ParentCode]
-			if !ok {
-				rg = make(map[uint]*regionInfo)
-				lpe.regionMap[r.ParentCode] = rg
-			}
-			l, err := r.convert()
-			if err != nil {
-				return nil, err
-			}
-			rg[r.Code] = l
-		}
+		wg.Add(1)
+		go sendRegionInfo(regionChan, r)
 	}
+	wg.Wait()
 
 	le.Store(path, lpe)
 
 	return lpe, nil
+}
+
+func sendRegionInfo(c chan *regionInfo, r *resourceData) {
+	l, _ := r.convert()
+	c <- l
 }
 
 type resourceData struct {
